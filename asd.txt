@@ -1,0 +1,229 @@
+1Git版本控制
+1.1Git版本控制
+1.1.1版本控制
+版本控制（Version Control System）
+记录文件的所有历史变化
+错误恢复到某个历史版本
+多人协作开发编辑同一个文件
+1.1.2主流的版本控制产品
+名称	模型	并发模式	历史模式	变更范围	网络协议	原子提交性
+CVS	Client-server	Merge	Changeset	File	Pserver,ssh	No
+SVN	Client-server	3-way merge, recursive merge, octopus merge		Changeset and Snapshot	Tree	custom (svn), custom (svn) over ssh, HTTP and SSL (usingWebDAV)	Yes
+Git	Distributed	Merge or lock	Snapshot	Tree	custom, custom over ssh, rsync, HTTP/HTTPS, email, bundles	Yes
+* 版本库模型（Repository model）:描述了多个源码版本库副本间的关系，有C/S（客户端/服务器）模式和分布式两种模式。在客户端/服务器模式下，每一用户通过客户端访问位于服务器的主版本库，每一客户机只需保存它所关注的文件副本，对当前工作副本（working copy）的更改只有在提交到服务器之后，其它用户才能看到对应文件的修改。而在分布式模式下，这些源码版本库副本间是对等的实体，用户的机器除了保存他们的工作副本外，还拥有本地版本库的历史信息。
+* 并发模式（Concurrency model）:描述了当同时对同一工作副本/文件进行更改或编辑时，如何管理这种冲突以避免产生无意义的数据，有排它锁和合并模式。在排它锁模式下，只有发出请求并获得当前文件排它锁的用户才能对对该文件进行更改。而在合并模式下，用户可以随意编辑或更改文件，但可能随时会被通知存在冲突（两个或多个用户同时编辑同一文件），于是版本控制工具或用户需要合并更改以解决这种冲突。因此，几乎所有的分布式版本控制软件采用合并方式解决并发冲突。
+* 历史模式（History model）：描述了如何在版本库中存贮文件的更改信息，有快照和改变集两种模式。在快照模式下，版本库会分别存储更改发生前后的工作副本；而在改变集模式下，版本库除了保存更改发生前的工作副本外，只保存更改发生后的改变信息。
+* 变更范围（Scope of change）：描述了版本编号是针对单个文件还是整个目录树。
+* 网络协议（Network protocols）：描述了多个版本库间进行同步时采用的网络协议。
+* 原子提交性（Atomic commit）：描述了在提交更改时，能否保证所有更改要么全部提交或合并，要么不会发生任何改变。
+
+简而言之，各有优缺点，git要配合hub，可以避免分布式损坏。svn有权限控制，避免全被clone走。git适合纯代码，svn适合综合性文档管理，结合起来就完美。显然最大的不同在于git是分布式的。
+1.1.3介绍
+
+Linus在1991年创建了开源的Linux，从此，Linux系统不断发展，已经成为最大的服务器系统软件了。Linus虽然创建了Linux的核心，但Linux的壮大是靠全世界热心的志愿者参与的，这么多人在世界各地为Linux编写代码，那Linux的代码是如何管理的呢？
+事实是，在2002年以前，世界各地的志愿者把源代码文件通过diff的方式发给Linus，然后由Linus本人通过手工方式合并代码！你也许会想，为什么Linus不把Linux代码放到版本控制系统里呢？不是有CVS、SVN这些免费的版本控制系统吗？因为Linus坚定地反对CVS和SVN，这些集中式的版本控制系统不但速度慢，而且必须联网才能使用。有一些商用的版本控制系统，虽然比CVS、SVN好用，但那是付费的，和Linux的开源精神不符。不过，到了2002年，Linux系统已经发展了十年了，代码库之大让Linus很难继续通过手工方式管理了，社区的弟兄们也对这种方式表达了强烈不满，于是Linus选择了一个商业的版本控制系统BitKeeper，BitKeeper的东家BitMover公司出于人道主义精神，授权Linux社区免费使用这个版本控制系统。
+安定团结的大好局面在2005年就被打破了，原因是Linux社区牛人聚集，不免沾染了一些梁山好汉的江湖习气。开发Samba的Andrew试图破解BitKeeper的协议（这么干的其实也不只他一个），被BitMover公司发现了（监控工作做得不错！），于是BitMover公司怒了，要收回Linux社区的免费使用权。Linus可以向BitMover公司道个歉，保证以后严格管教弟兄们，嗯，这是不可能的。实际情况是这样的：Linus花了两周时间自己用C写了一个分布式版本控制系统，这就是Git！一个月之内，Linux系统的源码已经由Git管理了！牛是怎么定义的呢？大家可以体会一下。
+Git迅速成为最流行的分布式版本控制系统，尤其是2008年，GitHub网站上线了，它为开源项目免费提供Git存储，无数开源项目开始迁移至GitHub，包括jQuery，PHP，Ruby等等。历史就是这么偶然，如果不是当年BitMover公司威胁Linux社区，可能现在我们就没有免费而超级好用的Git了。
+1.1.4组成结构
+
+工作区：用来保存项目的元数据和对象数据库的地方。 这是 Git 中最重要的部分，从其它计算机克隆仓库时，拷贝的就是这里的数据。
+暂存区：保存了下次将提交的文件列表信息，一般在 Git 仓库目录中。有时候也被称作“索引”，不过一般说法还是叫暂存区域。
+版本库：也叫本地版本库，之所以说git 快，大部分提交都是对本地仓库而言的，不依赖网络，最后一次会推送的到远程仓库。
+远程仓库：可以看做是github，它是一个远程仓库，它提供web服务的 供大家方便下载、查看、提交、存储。
+1.1.5文件的状态
+
+新建文件状态为untracked，add命令执行后状态变为staged，已存在的文件状态为unmodified，修改文件内容，文件状态变为modified，commit提交，文件状态编程unmodifed。
+1.1.6命令速查
+
+1.2本地命令
+1.2.1注册账号
+第一步：先官网注册账号：https://github.com
+第二步：下载安装文件：
+Git-2.12.0-64-bit.exe，一路next，安装完桌面右键菜单有下面两项，安装完成。选择Git Bash Here，进入git客户端。
+
+1.2.2配置身份信息
+
+提交文件时，就知道这个文件是谁提交的。出了问题，就知道谁干的！
+1.2.3查看配置信息
+
+1.2.4创建本地仓库
+D:\javaenv\git_repository
+1.2.5进入仓库
+Administrator@tonythink MINGW64 ~/Desktop
+$ cd d:										#进入d盘
+
+Administrator@tonythink MINGW64 /d
+$ cd javaenv				
+$ mkdir git_repository			#创建目录
+$ cd git_repository				#进入目录
+1.2.6初始化仓库
+$ git init
+
+Administrator@tonythink MINGW64 /d/javaenv/git_repository (master)
+当前目录下多了一个.git的目录，这个目录是Git来跟踪管理版本库的，不要手动修改这个目录里面的文件，不然改乱了，就把Git仓库给破坏了。如果你没有看到.git目录，是因为默认这个目录是隐藏的，要显示修改其显示隐藏文件即可，一般无需修改。
+
+1.2.7git的工作流程
+克隆仓库
+在工作目录中新增、修改、删除文件
+暂存文件，将文件的快照放入暂存区
+提交更新，把暂存区的内容提交到Git仓库中
+1.2.8提交文件
+创建hi.txt
+$ git add hi.txt						#暂存单个文件
+$ git add ./*							#批量暂存当前目录下所有内容
+$ git status							#查看文件状态
+$ git commit -m "test"				#提交
+[master (root-commit) e522732] test
+ 1 file changed, 1 insertion(+)
+ create mode 100644 hi.txt
+$ git status							#查看文件状态
+1.2.9查看提交记录
+$ git log
+commit e522732d94c440fdd750368ce937ac1c40dbd2ed 	#本次提交唯一标识，对于版本回退非常有用
+Author: nutony <52399178@qq.com>
+Date:   Fri Jun 2 09:39:31 2017 +0800
+
+    test
+1.2.10比较当前文件和仓库文件
+修改hi.txt文件内容，然后和仓库中已经提交的hi.txt比较
+$ git diff hi.txt
+diff --git a/hi.txt b/hi.txt
+index 32f95c0..d7d0f3f 100644
+--- a/hi.txt
++++ b/hi.txt
+@@ -1 +1 @@
+-hi
+\ No newline at end of file
++<B1>Ƚϵ<B1>ǰ<CE>ļ<FE><BA>Ͳֿ<E2><CE>ļ<FE>	#中文乱码
+\ No newline at end of file
+
+Administrator@tonythink MINGW64 /d/javaenv/git_repository (master)
+$ git diff hi.txt
+diff --git a/hi.txt b/hi.txt
+index 32f95c0..2b80830 100644
+--- a/hi.txt
++++ b/hi.txt
+@@ -1 +1 @@
+-hi
+\ No newline at end of file
++<U+FEFF>比较当前文件和仓库文件					#文件格式改为UTF-8即可
+\ No newline at end of file
+1.2.11add和commit的区别
+Git和其他版本控制系统如SVN的一个不同之处就是有暂存区的概念。
+
+
+git的文件状态
+文件新建完状态为untracked
+1.2.12文件状态图
+
+1.3远程命令github
+1.3.1创建仓库
+登录：https://github.com 在git上新建一个仓库
+
+仓库名为stu，拥有者为：nutony。
+
+创建成功
+
+1.3.2克隆远程仓库
+首次需要把远程仓库克隆到本地仓库（D:\javaenv\git_repository）
+$ git clone https://github.com/nutony/stu.git
+本地仓库目录中就多了stu目录
+1.3.3关联本地仓库
+可以克隆仓库也可以关联本地仓库
+运行 git remote add [shortname] [url]
+git remote add stu git://github.com/nutony/stu
+1.3.4本地分支的更新推送到远程主机
+复制文件到stu目录
+$ cd stu										#进入目录
+$ ll											#查看目录
+total 11320
+-rw-r--r-- 1 Administrator 197121 11571275 八月 12  2015 jt.sql
+-rw-r--r-- 1 Administrator 197121    13879 一月 16  2016 jt-logo.png
+Administrator@tonythink MINGW64 /d/javaenv/git_repository/stu (master)
+$ git add .									#添加当前目录下文件
+
+Administrator@tonythink MINGW64 /d/javaenv/git_repository/stu (master)
+$ ll
+total 11320
+-rw-r--r-- 1 Administrator 197121 11571275 八月 12  2015 jt.sql
+-rw-r--r-- 1 Administrator 197121    13879 一月 16  2016 jt-logo.png
+
+Administrator@tonythink MINGW64 /d/javaenv/git_repository/stu (master)
+$ git commit -m "jttest"					#提交，设置备注
+[master (root-commit) 4364109] jttest
+ 2 files changed, 301 insertions(+)
+ create mode 100644 jt-logo.png
+ create mode 100644 jt.sql
+
+Administrator@tonythink MINGW64 /d/javaenv/git_repository/stu (master)
+$ git push origin master		#推送到远程仓库master默认分支，第一次需要登录，比较慢，弹出登录框输入用户名和密码。
+执行结果：
+Counting objects: 4, done.
+Delta compression using up to 4 threads.
+Compressing objects: 100% (4/4), done.
+Writing objects: 100% (4/4), 2.77 MiB | 31.00 KiB/s, done.
+Total 4 (delta 0), reused 0 (delta 0)
+To https://github.com/nutony/stu.git
+ * [new branch]      master -> master
+
+Administrator@tonythink MINGW64 /d/javaenv/git_repository/stu (master)
+$
+1.3.5删除文件
+$ rm *.jpg								#删除所有jpg结尾，删除本地文件
+$ ll
+$ git add .
+$ git commit -m 'rm'
+$ git push origin master
+1.4代码冲突
+1.4.1查看历史版本
+$ git log
+$ git log --stat	#记录我们可以看到每一次commit，都有哪些文件发生了改变
+$ git show 8ef96	#查询某次具体的修改
+1.4.2回滚
+发现提交的内容错了，可以进行回滚操作。
+$ vi a.txt								#修改文件内容
+$ git add a.txt
+$ git commit –m 'a.txt'
+$ git log								#查看日志
+commit 8ef960a0bfa137a0fadd7494823d5d1c101c427d
+Author: nutony <52399178@qq.com>
+Date:   Sat Jun 3 09:13:32 2017 +0800
+
+    a.txt
+
+commit 315e77e5cceb486a9bf63911cb8d3549a19b8255
+Author: nutony <52399178@qq.com>
+Date:   Sat Jun 3 09:07:43 2017 +0800
+
+    Delete 31.jpg
+$ git revert 8ef960a					#日志的commitId的前几位即可
+1.4.3远程仓库覆盖本地
+$ vi a.txt								#创建a.txt，设置内容为haha 1
+$ git add .							#暂存
+$ git commit -m '1'					#提交
+$ git pull origin master				#推送，此时查看github，a.txt存在
+
+$ vi a.txt								#编辑本地文件a.txt，修改内容haha 2
+$ git fetch --all						#只是下载代码到本地，不进行合并操作
+$ git reset --hard origin/master		#把HEAD指向最新的下载版本
+$ ll
+$ cat a.txt							#可以看到文件还是为1，被远程覆盖
+1.4.4解决冲突绝招
+如果冲突，自己修改的文件自己知道，则把修改的文件复制到其它目录，然后强制用远程覆盖本地文件，然后把修改的文件考回来覆盖。这样的好处是多人修改后，多个文件，修改起来太复杂。这样的方式非常方便高效。
+1.5TortoiseGit
+
+1.5.1安装
+TortoiseGit-1.8.14.0_64bit.1436148947.msi
+安装完成会自动获取登录的配置信息，同时在增加操作到右键菜单上。
+
+
+
+1.5.2添加文件到本地仓库
+先创建好文件，然后右键选择add命令。可以批量选择。
+
+
+1.5.3提交
+
+
+
+1.5.4查询
